@@ -1029,33 +1029,33 @@ function setMediaRatioByImage(img) {
   });
 })();
 // === Mode Toggle Logic (remember initial filtered set) ===
+// === Mode Toggle Logic (remember initial filtered set) ===
 (function initModeToggle() {
-  const MODE = { NEWS: 'news', ALL: 'all' };
-  let currentMode = MODE.NEWS;             // ★ 先声明并给默认值
-  window.ffGetMode = () => currentMode;    // ★ 再对外暴露 getter
+  const toggle = document.getElementById('modeToggle');
   if (!toggle) return;
 
-  // 1) 抓取“首次加载时就被模糊”的集合（作为永久基线）
+  const MODE = { NEWS: 'news', ALL: 'all' };
+  let currentMode = MODE.NEWS;                 // 默认 news
+  window.ffGetMode = () => currentMode;       // 对外提供只读 getter
+
+  // 首次加载时带有 .filtered 的卡片（作为永久基线）
   const cards = Array.from(document.querySelectorAll('#newsFeed .tweet-card'));
   const initialFilteredIds = new Set(
-    cards
-      .filter(c => c.classList.contains('filtered'))
-      .map(c => c.dataset.tweetId)
+    cards.filter(c => c.classList.contains('filtered'))
+         .map(c => c.dataset.tweetId)
   );
 
-  // 2) 在 News 模式下：需要模糊的条件
-  //    - 满足 data-type="news" 且 data-emotional="true"
-  //    - 或者一开始就被模糊（在 initialFilteredIds 里）
+  // 在 News 模式下需要模糊的条件
   function shouldBlurInNews(card) {
     const isNews = (card.dataset.type || '').toLowerCase() === 'news';
     const isEmotional = (card.dataset.emotional || '').toLowerCase() === 'true';
     const id = card.dataset.tweetId || '';
     return (isNews && isEmotional) || initialFilteredIds.has(id);
-    // 暴露一个读当前模式的函数给全局（父页也能用）
-window.ffGetMode = () => currentMode;
   }
 
   function applyMode(mode) {
+    currentMode = mode;  // ★ 关键：更新当前模式
+
     cards.forEach(card => {
       if (mode === MODE.ALL) {
         card.classList.remove('filtered');
@@ -1066,26 +1066,20 @@ window.ffGetMode = () => currentMode;
     });
 
     // 切换按钮高亮
-    const allOpt  = toggle.querySelector('[data-mode="all"]');
-    const newsOpt = toggle.querySelector('[data-mode="news"]');
-    if (mode === MODE.ALL) {
-      allOpt.classList.add('active'); newsOpt.classList.remove('active');
-      toggle.setAttribute('aria-pressed', 'true');
-    } else {
-      newsOpt.classList.add('active'); allOpt.classList.remove('active');
-      toggle.setAttribute('aria-pressed', 'false');
-    }
+    toggle.querySelectorAll('.toggle-option').forEach(o => o.classList.remove('active'));
+    toggle.querySelector(`[data-mode="${mode}"]`)?.classList.add('active');
+    toggle.setAttribute('aria-pressed', mode === MODE.ALL ? 'true' : 'false');
 
     try { logAction('toggle_mode', { mode }); } catch (_) {}
   }
 
   // 点击切换
   toggle.addEventListener('click', () => {
-    const newsActive = toggle.querySelector('[data-mode="news"]').classList.contains('active');
-    applyMode(newsActive ? MODE.ALL : MODE.NEWS);
+    const next = currentMode === MODE.NEWS ? MODE.ALL : MODE.NEWS;
+    applyMode(next);
   });
 
-  // 初始保持 News（与你现在的默认一致）
+  // 初始保持 News
   applyMode(MODE.NEWS);
 })();
 
