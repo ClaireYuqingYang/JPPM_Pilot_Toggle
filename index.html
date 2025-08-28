@@ -887,23 +887,34 @@
       }
     }
 
-    function sendComment(tweetIndex) {
-      const textarea = document.getElementById('commentInput');
-      const comment = textarea.value.trim();
-      const card = document.querySelectorAll('#newsFeed .tweet-card')[tweetIndex];
-      const tweetId = card?.dataset.tweetId;
-      const tweetText = card?.dataset.text;
-      if (comment) {
-        logAction('send_comment', { tweetId, tweetText, comment });
-        // Increment comment count on the card
-        const commentBtn = card?.querySelector('.action[data-action="comment"]');
-        if (commentBtn) updateCount(commentBtn, +1);
-        alert('Your comment has been sent:\n' + comment);
-        closeCommentModal();
-      } else {
-        textarea.focus();
-      }
-    }
+   function sendComment(tweetIndex) {
+  const textarea = document.getElementById('commentInput');
+  let comment = (textarea.value || '').trim()
+    .replace(/[\u0000-\u001F\u2028\u2029]/g, ' ')
+    .slice(0, 800);
+
+  if (comment) {
+    // 记录日志
+    logAction('send_comment', { step, tweetIndex, comment });
+
+    // 通知父页面（Qualtrics）去弹 toast
+    try {
+      window.parent.postMessage({
+        type:  'ff_log',
+        action:'send_comment',
+        ts:    new Date().toISOString(),
+        detail:{ comment }
+      }, '*');
+    } catch (e) { /* 忽略跨域异常 */ }
+
+    // 关闭评论弹窗 & 清空输入
+    closeCommentModal();
+    textarea.value = '';
+  } else {
+    textarea.focus();
+  }
+}
+
 
     // ====== Views Modal ======
     function showViewsModal(btnEl) {
@@ -1168,5 +1179,10 @@ function setMediaRatioByImage(img) {
 })();
 
 </script>
+<!-- 放在 body 里，但不要放在 <script> 里面 -->
+<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+padding:10px 14px;border-radius:10px;background:#111;color:#fff;
+box-shadow:0 4px 16px rgba(0,0,0,.25);display:none;z-index:9999">
+</div>
 </body>
 </html>
